@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Minimal Dice</title>
+  <meta name="theme-color" content="#0b0b0c" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    :root{
+      --bg:#0b0b0c; --card:#121214; --muted:#7e838b; --text:#f4f6f8; --accent:#e5e7eb; --ring:#2a2b2f;
+      --radius:18px; --shadow:0 12px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 50% -200px, #151518 0%, var(--bg) 55%);
+      color:var(--text);
+      display:flex; align-items:stretch; justify-content:center;
+    }
+    .app{width:min(100%,980px); padding:16px 16px 28px;}
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 2px 16px;
+    }
+    .brand{display:flex; align-items:center; gap:10px; letter-spacing:.3px}
+    .logo{
+      width:34px; height:34px; border-radius:10px; background:#17181a; box-shadow:inset 0 0 0 1px #27272a, var(--shadow); display:grid; place-items:center;
+    }
+    .logo span{font-weight:700; font-size:14px; color:#c8cbd1}
+    .title{font-size:18px; font-weight:600}
+    .controls{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{
+      background:#15161a; color:var(--text); border:1px solid #2b2d31; padding:10px 14px; border-radius:12px; cursor:pointer;
+      box-shadow:0 2px 0 rgba(255,255,255,.02) inset, 0 1px 1px rgba(0,0,0,.25);
+      transition:transform .05s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
+      user-select:none; font-weight:600; letter-spacing:.2px
+    }
+    .btn:hover{background:#17181c}
+    .btn:active{transform:translateY(1px)}
+    .btn.ghost{background:transparent; border-color:#2a2b2f; color:#d6d8dd}
+    .btn.primary{background:#f3f4f6; color:#0e0f12; border-color:#f3f4f6}
+    .btn.small{padding:8px 10px; font-weight:600}
+    .counter{display:flex; align-items:center; gap:6px; background:#121317; border:1px solid #2a2b2f; border-radius:12px; padding:6px}
+    .counter .num{min-width:28px; text-align:center; font-variant-numeric:tabular-nums; font-weight:700}
+
+    .grid{
+      display:grid; grid-template-columns: repeat( auto-fit, minmax(160px,1fr) );
+      gap:16px; padding-top:8px;
+    }
+    .die{
+      aspect-ratio:1/1; border-radius:var(--radius); background:linear-gradient(160deg,#141519,#0f1013);
+      border:1px solid #1f2025; box-shadow:var(--shadow); display:grid; place-items:center; position:relative; overflow:hidden;
+      transform:translateZ(0);
+    }
+    .die .value{
+      font-size: clamp(32px, 8vw, 58px);
+      font-weight:800; letter-spacing:.5px;
+      text-align:center; line-height:1.05;
+      max-width:88%; word-break:break-word; color:#f7f9fb;
+      text-shadow:0 1px 0 rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.5)
+    }
+    .die .chip{
+      position:absolute; top:10px; right:10px; font-size:12px; color:#aeb2b9; background:#0f1014; border:1px solid #24262b; border-radius:999px; padding:4px 8px;
+      opacity:.85
+    }
+    .die .tap{position:absolute; bottom:10px; right:10px; font-size:12px; color:#9aa0a8; opacity:.65}
+    .die.anim{
+      animation:roll .6s cubic-bezier(.3,.7,.1,1);
+    }
+    @keyframes roll{
+      0%{transform:rotate3d(1,1,0,0) scale(.98)}
+      30%{transform:rotate3d(1,1,0,18deg) scale(.98)}
+      60%{transform:rotate3d(1,1,0,-12deg) scale(.985)}
+      100%{transform:rotate3d(1,1,0,0) scale(1)}
+    }
+
+    .hint{color:var(--muted); font-size:13px; padding:16px 4px 4px}
+
+    dialog{
+      border:none; border-radius:18px; padding:0; width:min(100%,720px); background:#0f1013; color:var(--text);
+      box-shadow: 0 20px 80px rgba(0,0,0,.65), 0 2px 16px rgba(0,0,0,.35);
+    }
+    .sheet{padding:18px}
+    .sheet h2{margin:0 0 10px; font-size:18px}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .seg{
+      display:flex; align-items:center; gap:6px; background:#111216; border:1px solid #26272c; border-radius:12px; padding:6px
+    }
+    .seg button{border:none; background:transparent; padding:8px 10px; border-radius:10px; color:#cfd3da; cursor:pointer; font-weight:700}
+    .seg button.active{background:#1a1b20; color:#fff; box-shadow:inset 0 0 0 1px #2a2b31}
+    .faces{display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-top:12px}
+    .faces label{display:block; font-size:12px; color:#aab0b8; margin-bottom:4px}
+    .faces input{
+      width:100%; padding:10px 12px; border-radius:12px; border:1px solid #282a2f; background:#121318; color:#e7eaef; outline:none;
+    }
+    .sheet .footer{display:flex; justify-content:space-between; gap:10px; margin-top:14px}
+    .link{color:#c9ced7; text-decoration:none; border-bottom:1px dotted #3a3c42}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+    @media (max-width:640px){
+      .faces{grid-template-columns:repeat(3,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><span>⚄</span></div>
+        <div class="title">Minimal Dice</div>
+      </div>
+      <div class="controls">
+        <div class="counter" role="group" aria-label="Dice count">
+          <button class="btn small ghost" id="minus" aria-label="Remove die">−</button>
+          <div class="num" id="count">1</div>
+          <button class="btn small ghost" id="plus" aria-label="Add die">+</button>
+        </div>
+        <button class="btn ghost" id="edit">Edit faces</button>
+        <button class="btn primary" id="roll">Roll all</button>
+      </div>
+    </header>
+
+    <main class="grid" id="grid" aria-live="polite" aria-atomic="true"></main>
+    <div class="hint">Tip: tap any die to roll just that one. Faces accept numbers <em>or</em> text (e.g., “Yes/No/Maybe”).</div>
+  </div>
+
+  <!-- Face editor -->
+  <dialog id="editor">
+    <form method="dialog" class="sheet" id="editorForm">
+      <h2>Customize faces</h2>
+      <div class="row">
+        <div class="seg" id="dieTabs" role="tablist" aria-label="Choose die">
+          <!-- tabs injected -->
+        </div>
+        <button class="btn small ghost" id="resetFaces" type="button">Reset to 1–6</button>
+      </div>
+      <div id="facesWrap" class="faces" aria-live="polite">
+        <!-- inputs injected -->
+      </div>
+      <div class="footer">
+        <button class="btn ghost" value="cancel">Cancel</button>
+        <button class="btn primary" value="default" id="saveFaces">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    // --- State ---------------------------------------------------------------
+    const MAX_DICE = 6;
+    const DEFAULT_FACES = ["1","2","3","4","5","6"];
+    const state = {
+      dice: [],
+      selectedDie: 0
+    };
+    const el = s => document.querySelector(s);
+    const grid = el('#grid');
+    const countEl = el('#count');
+    const editor = el('#editor');
+    const dieTabs = el('#dieTabs');
+    const facesWrap = el('#facesWrap');
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem('minimal-dice-state');
+        if(!raw){ initDefault(); return; }
+        const parsed = JSON.parse(raw);
+        if(!parsed || !Array.isArray(parsed.dice)) throw 0;
+        state.dice = parsed.dice.slice(0, MAX_DICE).map(d => ({
+          faces: Array.isArray(d.faces) && d.faces.length === 6 ? d.faces.map(String) : DEFAULT_FACES.slice(),
+          last: Number.isInteger(d.last) ? d.last : 0
+        }));
+        if(state.dice.length === 0) initDefault();
+      }catch{ initDefault(); }
+    }
+    function initDefault(){
+      state.dice = [{faces: DEFAULT_FACES.slice(), last: 0}];
+    }
+    function persist(){
+      localStorage.setItem('minimal-dice-state', JSON.stringify({dice: state.dice}));
+    }
+
+    // --- Dice UI -------------------------------------------------------------
+    function render(){
+      countEl.textContent = String(state.dice.length);
+      grid.innerHTML = '';
+      state.dice.forEach((d, i) => {
+        const die = document.createElement('button');
+        die.className = 'die';
+        die.setAttribute('aria-label', `Die ${i+1}, current face ${d.faces[d.last]}`);
+        die.innerHTML = `
+          <span class="chip">D${i+1}</span>
+          <div class="value">${escapeHtml(d.faces[d.last])}</div>
+          <span class="tap">tap ↺</span>
+        `;
+        die.addEventListener('click', () => rollOne(i, true));
+        grid.appendChild(die);
+      });
+    }
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    }
+    function vib(ms=20){
+      if('vibrate' in navigator) navigator.vibrate(ms);
+    }
+
+    // --- Rolling -------------------------------------------------------------
+    function randInt(n){ return Math.floor(Math.random()*n); }
+
+    function rollAll(){
+      const diceEls = [...document.querySelectorAll('.die')];
+      diceEls.forEach(el => el.classList.remove('anim'));
+      // trigger reflow for restart animation
+      void diceEls[0]?.offsetWidth;
+      state.dice.forEach((d, i) => {
+        const pool = sanitizeFaces(d.faces);
+        const idx = randInt(pool.length);
+        d.last = idx;
+        diceEls[i].querySelector('.value').innerHTML = escapeHtml(pool[idx]);
+        diceEls[i].classList.add('anim');
+      });
+      persist();
+      vib(25);
+    }
+    function rollOne(i, animate=true){
+      const d = state.dice[i];
+      const pool = sanitizeFaces(d.faces);
+      d.last = randInt(pool.length);
+      const dieEl = grid.children[i];
+      dieEl.querySelector('.value').innerHTML = escapeHtml(pool[d.last]);
+      if(animate){
+        dieEl.classList.remove('anim'); void dieEl.offsetWidth; dieEl.classList.add('anim');
+        vib(15);
+      }
+      persist();
+    }
+    function sanitizeFaces(arr){
+      const cleaned = arr.map(v => (String(v||'').trim() || null)).filter(Boolean);
+      return cleaned.length ? cleaned : DEFAULT_FACES;
+    }
+
+    // --- Count controls ------------------------------------------------------
+    el('#plus').addEventListener('click', () => {
+      if(state.dice.length >= MAX_DICE) return;
+      state.dice.push({faces: DEFAULT_FACES.slice(), last: 0});
+      persist(); render();
+    });
+    el('#minus').addEventListener('click', () => {
+      if(state.dice.length <= 1) return;
+      state.dice.pop();
+      persist(); render();
+    });
+    el('#roll').addEventListener('click', rollAll);
+
+    // --- Editor --------------------------------------------------------------
+    el('#edit').addEventListener('click', () => {
+      buildTabs();
+      buildFaceInputs();
+      editor.showModal();
+    });
+
+    function buildTabs(){
+      dieTabs.innerHTML = '';
+      state.dice.forEach((_, i) => {
+        const b = document.createElement('button');
+        b.type='button';
+        b.role='tab';
+        b.className = 'tab' + (i===state.selectedDie ? ' active' : '');
+        b.textContent = `D${i+1}`;
+        if(i===state.selectedDie) b.classList.add('active');
+        b.addEventListener('click', () => {
+          state.selectedDie = i;
+          [...dieTabs.children].forEach(ch => ch.classList.remove('active'));
+          b.classList.add('active');
+          buildFaceInputs();
+        });
+        dieTabs.appendChild(b);
+      });
+    }
+    function buildFaceInputs(){
+      facesWrap.innerHTML = '';
+      const faces = state.dice[state.selectedDie].faces;
+      for(let i=0;i<6;i++){
+        const wrap = document.createElement('div');
+        const id = `face-${i}`;
+        wrap.innerHTML = `
+          <label for="${id}">Face ${i+1}</label>
+          <input id="${id}" type="text" maxlength="40" placeholder="${DEFAULT_FACES[i]}" value="${faces[i] ?? ''}">
+        `;
+        facesWrap.appendChild(wrap);
+      }
+    }
+    el('#resetFaces').addEventListener('click', () => {
+      state.dice[state.selectedDie].faces = DEFAULT_FACES.slice();
+      buildFaceInputs();
+    });
+    el('#editorForm').addEventListener('close', ()=>{}); // noop, Safari fix
+    el('#saveFaces').addEventListener('click', (e) => {
+      const newFaces = [...facesWrap.querySelectorAll('input')].map(i => i.value);
+      state.dice[state.selectedDie].faces = newFaces;
+      persist();
+      render();
+      // keep dialog open/close handled by form default value
+    });
+
+    // --- SW register ---------------------------------------------------------
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+
+    // --- Init ----------------------------------------------------------------
+    loadState();
+    render();
+  </script>
+</body>
+</html>
+
